@@ -1,0 +1,27 @@
+[package]
+name = "egui_glfw_gl"
+version = "0.13.1"
+authors = ["cohaereo <lucasteal@protonmail.com>"]
+edition = "2018"
+description = "OpenGL backend for egui using GLFW"
+homepage = "https://github.com/cohaereo/egui_glfw_gl"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/cohaereo/egui_glfw_gl"
+categories = ["gui", "graphics"]
+keywords = ["glfw", "opengl", "egui", "gui", "gamedev"]
+include = ["**/*.rs", "Cargo.toml"]
+
+
+[dependencies]
+gl = "0.14.0"
+glfw = "0.41"
+egui = "0.13.1"
+
+[dependencies.clipboard]
+package = "cli-clipboard"
+version = "0.2"
+optional = true
+
+[features]
+default = ["clipboard"]
