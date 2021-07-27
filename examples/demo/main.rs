@@ -30,25 +30,13 @@ fn main() {
     window.make_current();
     glfw.set_swap_interval(glfw::SwapInterval::Sync(1));
 
-    // let dpi: f32 = glfw.with_primary_monitor(|_, monitor| {
-    //     let phys_size = monitor.unwrap().get_physical_size();
-    //     let screen_width = monitor.unwrap().get_video_mode().unwrap().width;
-    //
-    //
-    //     screen_width as f32 / ((phys_size.0 as f32 / 10.) / 2.54)
-    // });
-
-    // FIXME: Can't get scaling right just yet, using 1 pixel per point *for now*
-    let native_pixels_per_point = 1.;
-    // let native_pixels_per_point = 96. / dpi;
-
-
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
     let mut painter = egui_backend::Painter::new(&mut window, SCREEN_WIDTH, SCREEN_HEIGHT);
     let mut egui_ctx = egui::CtxRef::default();
 
     let (width, height) = window.get_framebuffer_size();
+    let native_pixels_per_point = window.get_content_scale().0;
 
     let mut egui_input_state = egui_backend::EguiInputState::new(egui::RawInput {
         screen_rect: Some(Rect::from_min_size(
