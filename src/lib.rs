@@ -6,7 +6,7 @@ pub use egui;
 pub use gl;
 pub use glfw;
 
-mod painter;
+pub mod painter;
 
 pub use painter::Painter;
 
@@ -49,29 +49,33 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
             ))
         }
 
-        MouseButton (mouse_btn, glfw::Action::Press, _) => state.input.events.push(egui::Event::PointerButton {
-            pos: state.pointer_pos,
-            button: match mouse_btn {
-                glfw::MouseButtonLeft => egui::PointerButton::Primary,
-                glfw::MouseButtonRight => egui::PointerButton::Secondary,
-                glfw::MouseButtonMiddle => egui::PointerButton::Middle,
-                _ => unreachable!(),
-            },
-            pressed: true,
-            modifiers: state.modifiers,
-        }),
+        MouseButton(mouse_btn, glfw::Action::Press, _) => {
+            state.input.events.push(egui::Event::PointerButton {
+                pos: state.pointer_pos,
+                button: match mouse_btn {
+                    glfw::MouseButtonLeft => egui::PointerButton::Primary,
+                    glfw::MouseButtonRight => egui::PointerButton::Secondary,
+                    glfw::MouseButtonMiddle => egui::PointerButton::Middle,
+                    _ => unreachable!(),
+                },
+                pressed: true,
+                modifiers: state.modifiers,
+            })
+        }
 
-        MouseButton (mouse_btn, glfw::Action::Release, _) => state.input.events.push(egui::Event::PointerButton {
-            pos: state.pointer_pos,
-            button: match mouse_btn {
-                glfw::MouseButtonLeft => egui::PointerButton::Primary,
-                glfw::MouseButtonRight => egui::PointerButton::Secondary,
-                glfw::MouseButtonMiddle => egui::PointerButton::Middle,
-                _ => unreachable!(),
-            },
-            pressed: false,
-            modifiers: state.modifiers,
-        }),
+        MouseButton(mouse_btn, glfw::Action::Release, _) => {
+            state.input.events.push(egui::Event::PointerButton {
+                pos: state.pointer_pos,
+                button: match mouse_btn {
+                    glfw::MouseButtonLeft => egui::PointerButton::Primary,
+                    glfw::MouseButtonRight => egui::PointerButton::Secondary,
+                    glfw::MouseButtonMiddle => egui::PointerButton::Middle,
+                    _ => unreachable!(),
+                },
+                pressed: false,
+                modifiers: state.modifiers,
+            })
+        }
 
         CursorPos(x, y) => {
             state.pointer_pos = pos2(
@@ -93,7 +97,7 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
                     shift: (keymod & Mod::Shift == Mod::Shift),
 
                     // TODO: GLFW doesn't seem to support the mac command key
-                    // mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
+                    //       mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
                     command: (keymod & Mod::Control == Mod::Control),
 
                     ..Default::default()
@@ -116,7 +120,7 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
                     shift: (keymod & Mod::Shift == Mod::Shift),
 
                     // TODO: GLFW doesn't seem to support the mac command key
-                    // mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
+                    //       mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
                     command: (keymod & Mod::Control == Mod::Control),
 
                     ..Default::default()
@@ -128,7 +132,11 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
                     state.input.events.push(egui::Event::Copy);
                 } else if state.modifiers.command && key == egui::Key::V {
                     if let Some(clipboard_ctx) = state.clipboard.as_mut() {
-                        state.input.events.push(egui::Event::Text(clipboard_ctx.get_contents().unwrap_or("".to_string())));
+                        state.input.events.push(egui::Event::Text(
+                            clipboard_ctx
+                                .get_contents()
+                                .unwrap_or_else(|_| "".to_string()),
+                        ));
                     }
                 } else {
                     state.input.events.push(Event::Key {
@@ -144,8 +152,11 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
             state.input.events.push(Event::Text(c.to_string()));
         }
 
-        Scroll (x, y) => {
-            state.input.scroll_delta = vec2(x as f32, y as f32);
+        Scroll(x, y) => {
+            state
+                .input
+                .events
+                .push(Event::Scroll(vec2(x as f32, y as f32)));
         }
 
         _ => {}
@@ -174,7 +185,6 @@ pub fn translate_virtual_key_code(key: glfw::Key) -> Option<egui::Key> {
         End => Key::End,
         PageDown => Key::PageDown,
         PageUp => Key::PageUp,
-
 
         A => Key::A,
         B => Key::B,
