@@ -9,7 +9,7 @@ use egui::{
 use gl::types::{GLchar, GLenum, GLint, GLsizeiptr, GLuint};
 use std::ffi::{c_void, CString};
 
-pub fn compile_shader(src: &str, ty: GLenum) -> GLuint {
+fn compile_shader(src: &str, ty: GLenum) -> GLuint {
     let shader = unsafe { gl::CreateShader(ty) };
 
     let c_str = CString::new(src.as_bytes()).unwrap();
@@ -45,10 +45,11 @@ pub fn compile_shader(src: &str, ty: GLenum) -> GLuint {
             core::str::from_utf8(&buf).expect("ShaderInfoLog not valid utf8")
         );
     }
+
     shader
 }
 
-pub fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
+fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     let program = unsafe { gl::CreateProgram() };
 
     unsafe {
@@ -84,11 +85,12 @@ pub fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
             core::str::from_utf8(&buf).expect("ProgramInfoLog not valid utf8")
         );
     }
+
     program
 }
 
 #[derive(Default)]
-struct UserTexture {
+pub struct UserTexture {
     size: (usize, usize),
 
     /// Pending upload (will be emptied later).
@@ -137,6 +139,16 @@ impl UserTexture {
         }
 
         self.dirty = true;
+    }
+
+    pub fn from_raw(id: u32) -> Self {
+        Self {
+            size: (0, 0),
+            texture: Some(id),
+            filtering: TextureFilter::Linear,
+            dirty: false,
+            pixels: Vec::with_capacity(0),
+        }
     }
 
     pub fn delete(&self) {
@@ -324,10 +336,17 @@ impl Painter {
     fn paint_mesh(&self, mesh: &Mesh, clip_rect: &Rect, pixels_per_point: f32) {
         debug_assert!(mesh.is_valid());
 
-        match mesh.texture_id {
-            egui::TextureId::Managed(id) | egui::TextureId::User(id) => unsafe {
-                gl::BindTexture(gl::TEXTURE_2D, id as _)
-            },
+        let it = self
+            .textures
+            .get(&mesh.texture_id)
+            .expect("Textures should have been added to hash map by now");
+
+        unsafe {
+            gl::BindTexture(
+                gl::TEXTURE_2D,
+                it.texture
+                    .expect("Texture should have a valid OpenGL id now"),
+            );
         }
 
         let screen_size_pixels = egui::vec2(self.canvas_width as f32, self.canvas_height as f32);
@@ -396,14 +415,16 @@ impl Painter {
                 positions.as_ptr() as *const gl::types::GLvoid,
                 gl::STREAM_DRAW,
             );
+        }
 
-            let a_pos = CString::new("a_pos").unwrap();
-            let a_pos_ptr = a_pos.as_ptr();
-            let a_pos_loc = gl::GetAttribLocation(self.program, a_pos_ptr);
-            assert!(a_pos_loc >= 0);
-            let a_pos_loc = a_pos_loc as u32;
+        let a_pos = CString::new("a_pos").unwrap();
+        let a_pos_ptr = a_pos.as_ptr();
+        let a_pos_loc = unsafe { gl::GetAttribLocation(self.program, a_pos_ptr) };
+        assert!(a_pos_loc >= 0);
+        let a_pos_loc = a_pos_loc as u32;
 
-            let stride = 0;
+        let stride = 0;
+        unsafe {
             gl::VertexAttribPointer(
                 a_pos_loc,
                 2,
@@ -422,14 +443,16 @@ impl Painter {
                 tex_coords.as_ptr() as *const gl::types::GLvoid,
                 gl::STREAM_DRAW,
             );
+        }
 
-            let a_tc = CString::new("a_tc").unwrap();
-            let a_tc_ptr = a_tc.as_ptr();
-            let a_tc_loc = gl::GetAttribLocation(self.program, a_tc_ptr);
-            assert!(a_tc_loc >= 0);
-            let a_tc_loc = a_tc_loc as u32;
+        let a_tc = CString::new("a_tc").unwrap();
+        let a_tc_ptr = a_tc.as_ptr();
+        let a_tc_loc = unsafe { gl::GetAttribLocation(self.program, a_tc_ptr) };
+        assert!(a_tc_loc >= 0);
+        let a_tc_loc = a_tc_loc as u32;
 
-            let stride = 0;
+        let stride = 0;
+        unsafe {
             gl::VertexAttribPointer(a_tc_loc, 2, gl::FLOAT, gl::FALSE, stride, core::ptr::null());
             gl::EnableVertexAttribArray(a_tc_loc);
 
@@ -441,14 +464,16 @@ impl Painter {
                 colors.as_ptr() as *const gl::types::GLvoid,
                 gl::STREAM_DRAW,
             );
+        }
 
-            let a_srgba = CString::new("a_srgba").unwrap();
-            let a_srgba_ptr = a_srgba.as_ptr();
-            let a_srgba_loc = gl::GetAttribLocation(self.program, a_srgba_ptr);
-            assert!(a_srgba_loc >= 0);
-            let a_srgba_loc = a_srgba_loc as u32;
+        let a_srgba = CString::new("a_srgba").unwrap();
+        let a_srgba_ptr = a_srgba.as_ptr();
+        let a_srgba_loc = unsafe { gl::GetAttribLocation(self.program, a_srgba_ptr) };
+        assert!(a_srgba_loc >= 0);
+        let a_srgba_loc = a_srgba_loc as u32;
 
-            let stride = 0;
+        let stride = 0;
+        unsafe {
             gl::VertexAttribPointer(
                 a_srgba_loc,
                 4,
@@ -489,6 +514,7 @@ impl Painter {
 
                         texture.update_texture_part(x as _, y as _, w as _, h as _, &data);
                     }
+
                     egui::ImageData::Font(image) => {
                         assert_eq!(
                             image.width() * image.height(),

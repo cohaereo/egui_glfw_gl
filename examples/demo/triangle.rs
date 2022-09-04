@@ -6,6 +6,8 @@ use egui_glfw_gl::gl;
 use egui_glfw_gl::gl::types::*;
 use std::{mem, ptr, str};
 
+use std::ffi::CString;
+
 #[allow(unconditional_panic)]
 const fn illegal_null_in_string() {
     [][0]
@@ -27,6 +29,86 @@ macro_rules! cstr {
         validate_cstr_contents($s.as_bytes());
         unsafe { std::mem::transmute::<_, &std::ffi::CStr>(concat!($s, "\0")) }
     }};
+}
+
+fn compile_shader(src: &str, ty: GLenum) -> GLuint {
+    let shader = unsafe { gl::CreateShader(ty) };
+
+    let c_str = CString::new(src.as_bytes()).unwrap();
+    unsafe {
+        gl::ShaderSource(shader, 1, &c_str.as_ptr(), core::ptr::null());
+        gl::CompileShader(shader);
+    }
+
+    let mut status = gl::FALSE as GLint;
+    unsafe {
+        gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
+    }
+
+    if status != (gl::TRUE as GLint) {
+        let mut len = 0;
+        unsafe {
+            gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
+        }
+
+        let mut buf = vec![0; len as usize];
+
+        unsafe {
+            gl::GetShaderInfoLog(
+                shader,
+                len,
+                core::ptr::null_mut(),
+                buf.as_mut_ptr() as *mut GLchar,
+            );
+        }
+
+        panic!(
+            "{}",
+            core::str::from_utf8(&buf).expect("ShaderInfoLog not valid utf8")
+        );
+    }
+
+    shader
+}
+
+fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
+    let program = unsafe { gl::CreateProgram() };
+
+    unsafe {
+        gl::AttachShader(program, vs);
+        gl::AttachShader(program, fs);
+        gl::LinkProgram(program);
+    }
+
+    let mut status = gl::FALSE as GLint;
+    unsafe {
+        gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
+    }
+
+    if status != (gl::TRUE as GLint) {
+        let mut len: GLint = 0;
+        unsafe {
+            gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
+        }
+
+        let mut buf = vec![0; len as usize];
+
+        unsafe {
+            gl::GetProgramInfoLog(
+                program,
+                len,
+                core::ptr::null_mut(),
+                buf.as_mut_ptr() as *mut GLchar,
+            );
+        }
+
+        panic!(
+            "{}",
+            core::str::from_utf8(&buf).expect("ProgramInfoLog not valid utf8")
+        );
+    }
+
+    program
 }
 
 const VS_SRC: &str = "
@@ -57,9 +139,9 @@ pub struct Triangle {
 
 impl Triangle {
     pub fn new() -> Self {
-        let vs = egui_glfw_gl::painter::compile_shader(VS_SRC, gl::VERTEX_SHADER);
-        let fs = egui_glfw_gl::painter::compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-        let program = egui_glfw_gl::painter::link_program(vs, fs);
+        let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
+        let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
+        let program = link_program(vs, fs);
 
         let mut vao = 0;
         let mut vbo = 0;
