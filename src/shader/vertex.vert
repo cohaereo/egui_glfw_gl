@@ -44,6 +44,6 @@ void main() {
         0.0,
     1.0);
     v_tc = a_tc;
-    v_rgba = a_srgba / 255.0;
+    v_rgba = linear_from_srgba(a_srgba);
     v_rgba.a = pow(v_rgba.a, 1.6);
 }

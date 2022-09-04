@@ -543,7 +543,7 @@ impl Painter {
                         "Mismatch between texture size and texel count"
                     );
 
-                    let pixels: Vec<u8> = image.pixels.iter().flat_map(|a| a.to_array()).collect();
+                    let pixels = image.pixels.iter().flat_map(|a| a.to_array()).collect();
 
                     UserTexture {
                         size: (w, h),
@@ -561,7 +561,7 @@ impl Painter {
                     );
 
                     let gamma = 1.0;
-                    let pixels: Vec<u8> = image
+                    let pixels = image
                         .srgba_pixels(gamma)
                         .flat_map(|a| a.to_array())
                         .collect();
