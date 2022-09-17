@@ -104,6 +104,18 @@ fn main() {
         painter.update_user_texture_data(&plot_tex_id, &srgba);
 
         egui::Window::new("Egui with GLFW").show(&egui_ctx, |ui| {
+            egui::TopBottomPanel::top("Top").show(&egui_ctx, |ui| {
+                ui.menu_button("File", |ui| {
+                    {
+                        let _ = ui.button("test 1");
+                    }
+                    ui.separator();
+                    {
+                        let _ = ui.button("test 2");
+                    }
+                });
+            });
+
             //Image just needs a texture id reference, so we just pass it the texture id that was returned to us
             //when we previously initialized the texture.
             ui.add(Image::new(plot_tex_id, vec2(PIC_WIDTH as f32, PIC_HEIGHT as f32)));

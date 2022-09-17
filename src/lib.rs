@@ -45,8 +45,9 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
         FramebufferSize(width, height) => {
             state.input.screen_rect = Some(Rect::from_min_size(
                 Pos2::new(0f32, 0f32),
-                egui::vec2(width as f32, height as f32) / state.input.pixels_per_point.unwrap(),
-            ))
+                egui::vec2(width as f32, height as f32)
+                    / state.input.pixels_per_point.unwrap_or(1.0),
+            ));
         }
 
         MouseButton(mouse_btn, glfw::Action::Press, _) => {
@@ -79,8 +80,8 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
 
         CursorPos(x, y) => {
             state.pointer_pos = pos2(
-                x as f32 / state.input.pixels_per_point.unwrap(),
-                y as f32 / state.input.pixels_per_point.unwrap(),
+                x as f32 / state.input.pixels_per_point.unwrap_or(1.0),
+                y as f32 / state.input.pixels_per_point.unwrap_or(1.0),
             );
             state
                 .input
@@ -222,19 +223,23 @@ pub fn translate_virtual_key_code(key: glfw::Key) -> Option<egui::Key> {
 pub fn translate_cursor(cursor_icon: egui::CursorIcon) -> glfw::StandardCursor {
     match cursor_icon {
         CursorIcon::Default => glfw::StandardCursor::Arrow,
+
         CursorIcon::PointingHand => glfw::StandardCursor::Hand,
+
         CursorIcon::ResizeHorizontal => glfw::StandardCursor::HResize,
         CursorIcon::ResizeVertical => glfw::StandardCursor::VResize,
         // TODO: GLFW doesnt have these specific resize cursors, so we'll just use the HResize and VResize ones instead
         CursorIcon::ResizeNeSw => glfw::StandardCursor::HResize,
         CursorIcon::ResizeNwSe => glfw::StandardCursor::VResize,
+
         CursorIcon::Text => glfw::StandardCursor::IBeam,
         CursorIcon::Crosshair => glfw::StandardCursor::Crosshair,
+
+        CursorIcon::Grab | CursorIcon::Grabbing => glfw::StandardCursor::Hand,
+
         // TODO: Same for these
         CursorIcon::NotAllowed | CursorIcon::NoDrop => glfw::StandardCursor::Arrow,
         CursorIcon::Wait => glfw::StandardCursor::Arrow,
-        CursorIcon::Grab | CursorIcon::Grabbing => glfw::StandardCursor::Hand,
-
         _ => glfw::StandardCursor::Arrow,
     }
 }
