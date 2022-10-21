@@ -6,7 +6,7 @@ pub use egui;
 pub use gl;
 pub use glfw;
 
-mod painter;
+pub mod painter;
 
 pub use painter::Painter;
 
@@ -45,38 +45,43 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
         FramebufferSize(width, height) => {
             state.input.screen_rect = Some(Rect::from_min_size(
                 Pos2::new(0f32, 0f32),
-                egui::vec2(width as f32, height as f32) / state.input.pixels_per_point.unwrap(),
-            ))
+                egui::vec2(width as f32, height as f32)
+                    / state.input.pixels_per_point.unwrap_or(1.0),
+            ));
         }
 
-        MouseButton (mouse_btn, glfw::Action::Press, _) => state.input.events.push(egui::Event::PointerButton {
-            pos: state.pointer_pos,
-            button: match mouse_btn {
-                glfw::MouseButtonLeft => egui::PointerButton::Primary,
-                glfw::MouseButtonRight => egui::PointerButton::Secondary,
-                glfw::MouseButtonMiddle => egui::PointerButton::Middle,
-                _ => unreachable!(),
-            },
-            pressed: true,
-            modifiers: state.modifiers,
-        }),
+        MouseButton(mouse_btn, glfw::Action::Press, _) => {
+            state.input.events.push(egui::Event::PointerButton {
+                pos: state.pointer_pos,
+                button: match mouse_btn {
+                    glfw::MouseButtonLeft => egui::PointerButton::Primary,
+                    glfw::MouseButtonRight => egui::PointerButton::Secondary,
+                    glfw::MouseButtonMiddle => egui::PointerButton::Middle,
+                    _ => unreachable!(),
+                },
+                pressed: true,
+                modifiers: state.modifiers,
+            })
+        }
 
-        MouseButton (mouse_btn, glfw::Action::Release, _) => state.input.events.push(egui::Event::PointerButton {
-            pos: state.pointer_pos,
-            button: match mouse_btn {
-                glfw::MouseButtonLeft => egui::PointerButton::Primary,
-                glfw::MouseButtonRight => egui::PointerButton::Secondary,
-                glfw::MouseButtonMiddle => egui::PointerButton::Middle,
-                _ => unreachable!(),
-            },
-            pressed: false,
-            modifiers: state.modifiers,
-        }),
+        MouseButton(mouse_btn, glfw::Action::Release, _) => {
+            state.input.events.push(egui::Event::PointerButton {
+                pos: state.pointer_pos,
+                button: match mouse_btn {
+                    glfw::MouseButtonLeft => egui::PointerButton::Primary,
+                    glfw::MouseButtonRight => egui::PointerButton::Secondary,
+                    glfw::MouseButtonMiddle => egui::PointerButton::Middle,
+                    _ => unreachable!(),
+                },
+                pressed: false,
+                modifiers: state.modifiers,
+            })
+        }
 
         CursorPos(x, y) => {
             state.pointer_pos = pos2(
-                x as f32 / state.input.pixels_per_point.unwrap(),
-                y as f32 / state.input.pixels_per_point.unwrap(),
+                x as f32 / state.input.pixels_per_point.unwrap_or(1.0),
+                y as f32 / state.input.pixels_per_point.unwrap_or(1.0),
             );
             state
                 .input
@@ -93,7 +98,7 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
                     shift: (keymod & Mod::Shift == Mod::Shift),
 
                     // TODO: GLFW doesn't seem to support the mac command key
-                    // mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
+                    //       mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
                     command: (keymod & Mod::Control == Mod::Control),
 
                     ..Default::default()
@@ -116,7 +121,7 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
                     shift: (keymod & Mod::Shift == Mod::Shift),
 
                     // TODO: GLFW doesn't seem to support the mac command key
-                    // mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
+                    //       mac_cmd: keymod & Mod::LGUIMOD == Mod::LGUIMOD,
                     command: (keymod & Mod::Control == Mod::Control),
 
                     ..Default::default()
@@ -128,7 +133,11 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
                     state.input.events.push(egui::Event::Copy);
                 } else if state.modifiers.command && key == egui::Key::V {
                     if let Some(clipboard_ctx) = state.clipboard.as_mut() {
-                        state.input.events.push(egui::Event::Text(clipboard_ctx.get_contents().unwrap_or("".to_string())));
+                        state.input.events.push(egui::Event::Text(
+                            clipboard_ctx
+                                .get_contents()
+                                .unwrap_or_else(|_| "".to_string()),
+                        ));
                     }
                 } else {
                     state.input.events.push(Event::Key {
@@ -144,8 +153,11 @@ pub fn handle_event(event: glfw::WindowEvent, state: &mut EguiInputState) {
             state.input.events.push(Event::Text(c.to_string()));
         }
 
-        Scroll (x, y) => {
-            state.input.scroll_delta = vec2(x as f32, y as f32);
+        Scroll(x, y) => {
+            state
+                .input
+                .events
+                .push(Event::Scroll(vec2(x as f32, y as f32)));
         }
 
         _ => {}
@@ -174,7 +186,6 @@ pub fn translate_virtual_key_code(key: glfw::Key) -> Option<egui::Key> {
         End => Key::End,
         PageDown => Key::PageDown,
         PageUp => Key::PageUp,
-
 
         A => Key::A,
         B => Key::B,
@@ -212,19 +223,23 @@ pub fn translate_virtual_key_code(key: glfw::Key) -> Option<egui::Key> {
 pub fn translate_cursor(cursor_icon: egui::CursorIcon) -> glfw::StandardCursor {
     match cursor_icon {
         CursorIcon::Default => glfw::StandardCursor::Arrow,
+
         CursorIcon::PointingHand => glfw::StandardCursor::Hand,
+
         CursorIcon::ResizeHorizontal => glfw::StandardCursor::HResize,
         CursorIcon::ResizeVertical => glfw::StandardCursor::VResize,
         // TODO: GLFW doesnt have these specific resize cursors, so we'll just use the HResize and VResize ones instead
         CursorIcon::ResizeNeSw => glfw::StandardCursor::HResize,
         CursorIcon::ResizeNwSe => glfw::StandardCursor::VResize,
+
         CursorIcon::Text => glfw::StandardCursor::IBeam,
         CursorIcon::Crosshair => glfw::StandardCursor::Crosshair,
+
+        CursorIcon::Grab | CursorIcon::Grabbing => glfw::StandardCursor::Hand,
+
         // TODO: Same for these
         CursorIcon::NotAllowed | CursorIcon::NoDrop => glfw::StandardCursor::Arrow,
         CursorIcon::Wait => glfw::StandardCursor::Arrow,
-        CursorIcon::Grab | CursorIcon::Grabbing => glfw::StandardCursor::Hand,
-
         _ => glfw::StandardCursor::Arrow,
     }
 }
